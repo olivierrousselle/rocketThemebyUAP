@@ -1,24 +1,36 @@
-import pandas as pd
+
 from pytrends.request import TrendReq
+import pandas as pd
 
-# j'initialise l'objet PyTrends
-pytrends = TrendReq(hl='fr-FR', tz=360)
+""" https://pypi.org/project/pytrends/ 
+    https://github.com/pat310/google-trends-api/wiki/Google-Trends-Categories """
 
-# ma thématique ou mon mot clé
-mots_cles = ["blockchain"]
+thematics = ["bitcoin"]
+timeframe = 'today 3-m' # date to start from
+country = 'US' # two letter country abbreviation
+gprop = '' # images, news, youtube or froogle (google shopping)
+cat = '' # google trends categories (7: finance, 12: business, 16: news, 74: education)
 
-# obtention des données de tendance & timeframe / pays
-pytrends.build_payload(mots_cles, timeframe='today 3-m', geo='FR')
-
-# obtention des données de tendance
-data = pytrends.related_queries()
-
-# données dans dictionnaire
-# boucle et print
-for mot_cle in mots_cles:
-    if data[mot_cle]['top'] is not None:
-        print(f"Requêtes populaires pour '{mot_cle}':")
-        print(data[mot_cle]['top'])
-    if data[mot_cle]['rising'] is not None:
-        print(f"Requêtes en hausse pour '{mot_cle}':")
-        print(data[mot_cle]['rising'])
+while True:
+    try:
+        pytrends = TrendReq()
+        if cat == '':
+            pytrends.build_payload(thematics, timeframe=timeframe, geo=country, gprop=gprop)
+        else:
+            pytrends.build_payload(thematics, cat=cat, timeframe=timeframe, geo=country, gprop=gprop)
+        for thematic in thematics:
+            data = pytrends.related_queries()
+            if data[thematic]['top'] is not None:
+                keywords_top = data[thematic]['top'][['query']]
+                keywords_top = keywords_top.rename(columns={'query': 'query top'})
+            if data[thematic]['rising'] is not None:
+                keywords_rising = data[thematic]['rising'][['query']]
+                keywords_rising = keywords_rising.rename(columns={'query': 'query rising'})
+            if len(keywords_top) > 0 and len(keywords_rising) > 0:
+                keywords = pd.merge(keywords_top, keywords_rising, left_index=True, right_index=True)
+                print(f"Requêtes populaires/en hausse pour '{thematic}':")
+                print(keywords)
+                keywords.to_csv(f"keywords_{thematic}.txt", sep=',')
+        break
+    except:
+        pass
